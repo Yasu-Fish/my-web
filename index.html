@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>PhotoShare Ranking</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <section class="hero">
+        <p class="eyebrow">Mobile Photo Ranking</p>
+        <h1>PhotoShare</h1>
+      </section>
+
+      <section id="homeView" class="home-card view" aria-labelledby="home-title">
+        <div>
+          <h2 id="home-title">ランキングを見る</h2>
+        </div>
+
+        <div id="genreButtons" class="genre-buttons"></div>
+
+        <div id="homeEmptyState" class="mini-empty">
+          まだジャンルがありません。写真登録から最初のジャンルを作成してください。
+        </div>
+
+        <button id="showUploadButton" class="primary-button" type="button">写真登録画面へ</button>
+      </section>
+
+      <section id="uploadView" class="upload-card view is-hidden" aria-labelledby="upload-title">
+        <button class="back-button" data-view="home" type="button">← 最初の画面へ戻る</button>
+        <div>
+          <h2 id="upload-title">写真を登録</h2>
+          <p>ジャンルタイトル、名前、サイズ、コメントを入力して画像をアップロードします。</p>
+        </div>
+
+        <form id="uploadForm" class="upload-form">
+          <label>
+            ジャンルタイトル
+            <input id="genreTitle" type="text" list="genreList" placeholder="例: 風景、料理、作品集" required />
+            <datalist id="genreList"></datalist>
+          </label>
+
+          <label>
+            ニックネーム
+            <input id="photoName" type="text" placeholder="例: たろう" required />
+          </label>
+
+          <label>
+            サイズ
+            <input id="photoSize" type="text" inputmode="decimal" placeholder="例: 120" required />
+          </label>
+
+          <label>
+            コメント
+            <textarea id="photoComment" rows="3" placeholder="この画像へのコメント"></textarea>
+          </label>
+
+          <label class="upload-drop">
+            <input id="photoInput" type="file" accept="image/*" required />
+            <span class="upload-icon">+</span>
+            <span id="fileLabel">画像を選択</span>
+          </label>
+
+          <button class="primary-button" type="submit">ランキングに追加</button>
+        </form>
+      </section>
+
+      <section id="rankingView" class="gallery-section view is-hidden" aria-labelledby="gallery-title">
+        <button class="back-button" data-view="home" type="button">← ジャンル選択へ戻る</button>
+        <div class="section-heading">
+          <h2 id="gallery-title">ランキング</h2>
+          <button id="clearButton" class="text-button" type="button">すべて削除</button>
+        </div>
+
+        <div id="emptyState" class="empty-state">
+          <div class="empty-illustration"></div>
+          <p>まだ画像がありません。</p>
+          <span>最初の画像を登録すると、ジャンル別にランキング表示されます。</span>
+        </div>
+
+        <div id="gallery" class="gallery" aria-live="polite"></div>
+      </section>
+    </main>
+
+    <template id="genreTemplate">
+      <section class="genre-card">
+        <div class="genre-heading">
+          <div>
+            <p class="genre-label">Genre</p>
+            <h3></h3>
+          </div>
+          <span class="genre-count"></span>
+        </div>
+        <div class="rank-list"></div>
+      </section>
+    </template>
+
+    <template id="photoCardTemplate">
+      <article class="photo-card">
+        <div class="rank-badge"></div>
+        <img alt="アップロードされた画像" />
+        <div class="photo-body">
+          <div class="photo-meta">
+            <div>
+              <h4></h4>
+              <span class="photo-date"></span>
+            </div>
+            <button class="delete-button" type="button">削除</button>
+          </div>
+          <dl class="photo-details">
+            <div>
+              <dt>サイズ</dt>
+              <dd class="photo-size"></dd>
+            </div>
+            <div>
+              <dt>コメント</dt>
+              <dd class="photo-comment"></dd>
+            </div>
+          </dl>
+        </div>
+      </article>
+    </template>
+
+    <script src="app.js"></script>
+  </body>
+</html>
