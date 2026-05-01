@@ -986,14 +986,25 @@ function buildStoragePath(genreTitle, mimeType) {
 }
 
 function sanitizePathSegment(value) {
-  const normalized = value
+  const source = value.trim();
+  const normalized = source
     .trim()
-    .toLocaleLowerCase("ja-JP")
-    .replace(/[^\p{L}\p{N}\-_]+/gu, "-")
+    .toLowerCase()
+    .replace(/[^a-z0-9\-_]+/g, "-")
     .replace(/-+/g, "-")
     .replace(/^-|-$/g, "");
 
-  return normalized || "misc";
+  return normalized || `genre-${hashText(source || "misc")}`;
+}
+
+function hashText(value) {
+  let hash = 0;
+
+  for (let index = 0; index < value.length; index += 1) {
+    hash = (hash * 31 + value.charCodeAt(index)) >>> 0;
+  }
+
+  return hash.toString(36);
 }
 
 function mimeTypeToExtension(mimeType) {
