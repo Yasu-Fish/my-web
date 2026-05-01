@@ -1287,7 +1287,7 @@ async function optimizeImageFile(file) {
   context.drawImage(imageSource, 0, 0, width, height);
   closeImageSource(imageSource);
 
-  const outputType = file.type === "image/png" ? "image/jpeg" : file.type;
+  const outputType = "image/jpeg";
 
   for (const quality of JPEG_QUALITY_STEPS) {
     const blob = await canvasToBlob(canvas, outputType, quality);
@@ -1298,7 +1298,12 @@ async function optimizeImageFile(file) {
   }
 
   const fallbackBlob = await canvasToBlob(canvas, outputType, JPEG_QUALITY_STEPS[JPEG_QUALITY_STEPS.length - 1]);
-  return fallbackBlob ?? file;
+
+  if (!fallbackBlob) {
+    throw new Error("画像をJPEG形式に変換できませんでした。iPhoneの写真設定を「互換性優先」にして再度お試しください。");
+  }
+
+  return fallbackBlob;
 }
 
 async function loadImageSource(file) {
