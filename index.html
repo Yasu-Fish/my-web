@@ -9,7 +9,7 @@
   <body>
     <main class="app-shell">
       <section class="hero">
-        <p class="eyebrow">Mobile Photo Ranking</p>
+        <p class="eyebrow">Fishing Ranking</p>
         <h1>PhotoShare</h1>
       </section>
 
@@ -32,6 +32,7 @@
         <div>
           <h2 id="upload-title">写真を登録</h2>
           <p>ジャンルタイトル、名前、サイズ、コメントを入力して画像をアップロードします。</p>
+          <p>保存時に画像は自動で縮小・圧縮されるため、たくさん登録しても容量不足になりにくくなっています。</p>
         </div>
 
         <form id="uploadForm" class="upload-form">
@@ -52,6 +53,11 @@
           </label>
 
           <label>
+            釣果日
+            <input id="catchDate" type="date" />
+          </label>
+
+          <label>
             コメント
             <textarea id="photoComment" rows="3" placeholder="この画像へのコメント"></textarea>
           </label>
@@ -67,10 +73,9 @@
       </section>
 
       <section id="rankingView" class="gallery-section view is-hidden" aria-labelledby="gallery-title">
-        <button class="back-button" data-view="home" type="button">← ジャンル選択へ戻る</button>
         <div class="section-heading">
           <h2 id="gallery-title">ランキング</h2>
-          <button id="clearButton" class="text-button" type="button">すべて削除</button>
+          <button class="back-button" data-view="home" type="button">← ジャンル選択へ戻る</button>
         </div>
 
         <div id="emptyState" class="empty-state">
@@ -81,6 +86,85 @@
 
         <div id="gallery" class="gallery" aria-live="polite"></div>
       </section>
+
+      <section id="editView" class="upload-card view is-hidden" aria-labelledby="edit-title">
+        <button class="back-button" data-view="ranking" type="button">← ランキングへ戻る</button>
+        <div>
+          <h2 id="edit-title">データを編集</h2>
+          <p>#1 を3回タップしたときだけ開ける編集画面です。</p>
+        </div>
+
+        <div class="edit-preview">
+          <img id="editPreviewImage" alt="編集中の画像" />
+          <span id="editDate" class="photo-date"></span>
+        </div>
+
+        <form id="editForm" class="upload-form">
+          <label>
+            ジャンルタイトル
+            <input id="editGenreTitle" type="text" required />
+          </label>
+
+          <label>
+            ニックネーム
+            <input id="editPhotoName" type="text" required />
+          </label>
+
+          <label>
+            サイズ
+            <input id="editPhotoSize" type="text" inputmode="decimal" required />
+          </label>
+
+          <label>
+            釣果日
+            <input id="editCatchDate" type="date" />
+          </label>
+
+          <label>
+            コメント
+            <textarea id="editPhotoComment" rows="3" placeholder="この画像へのコメント"></textarea>
+          </label>
+
+          <button class="primary-button" type="submit">更新する</button>
+          <button id="editDeleteButton" class="danger-button" type="button">このデータを削除</button>
+        </form>
+      </section>
+
+      <section id="authView" class="auth-card" aria-labelledby="auth-title">
+        <div>
+          <p class="auth-label">Account</p>
+          <h2 id="auth-title">ログイン</h2>
+          <p id="authMessage">画像の投稿・編集にはログインが必要です。</p>
+        </div>
+
+        <form id="authForm" class="auth-form">
+          <label>
+            メールアドレス
+            <input id="authEmail" type="email" autocomplete="email" placeholder="you@example.com" required />
+          </label>
+
+          <label>
+            パスワード
+            <input id="authPassword" type="password" autocomplete="current-password" minlength="6" required />
+          </label>
+
+          <div class="auth-actions">
+            <button id="signInButton" class="primary-button" type="submit">ログイン</button>
+            <button id="signUpButton" class="secondary-button" type="button">新規登録</button>
+          </div>
+        </form>
+
+        <div id="signedInPanel" class="signed-in-panel" hidden>
+          <span id="currentUserEmail"></span>
+          <button id="signOutButton" class="secondary-button sign-out-button" type="button">ログアウト</button>
+        </div>
+
+        <button id="resetPasswordButton" class="text-button auth-help" type="button">
+          パスワードを忘れた場合
+        </button>
+      </section>
+
+      <div id="connectionNotice" class="connection-notice" hidden></div>
     </main>
 
     <template id="genreTemplate">
@@ -106,7 +190,11 @@
               <h4></h4>
               <span class="photo-date"></span>
             </div>
-            <button class="delete-button" type="button">削除</button>
+            <button class="like-button" type="button" aria-label="いいね">
+              <span class="like-icon">♡</span>
+              <span>いいね</span>
+              <span class="like-count">0</span>
+            </button>
           </div>
           <dl class="photo-details">
             <div>
@@ -122,6 +210,13 @@
       </article>
     </template>
 
+    <div id="imageViewer" class="image-viewer" hidden>
+      <button id="imageViewerClose" class="image-viewer-close" type="button" aria-label="画像を閉じる">×</button>
+      <img id="imageViewerImage" alt="" />
+    </div>
+
+    <script src="supabase-config.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="app.js"></script>
   </body>
 </html>
