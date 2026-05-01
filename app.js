@@ -574,9 +574,6 @@ function createPhotoCard(photo, rank) {
 
   image.src = photo.imageUrl;
   image.alt = photo.name;
-  image.addEventListener("click", () => {
-    openImageViewer(photo.imageUrl, photo.name);
-  });
   rankBadge.textContent = `#${rank}`;
   rankBadge.classList.add(getRankBadgeClass(rank));
   name.textContent = photo.name;

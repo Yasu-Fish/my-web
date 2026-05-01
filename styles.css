@@ -554,7 +554,6 @@ textarea:focus {
   max-height: 360px;
   object-fit: cover;
   background: #e7ddcb;
-  cursor: zoom-in;
 }
 
 .photo-body {
