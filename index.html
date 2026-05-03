@@ -63,9 +63,9 @@
           </label>
 
           <label class="upload-drop">
-            <input id="photoInput" type="file" accept="image/*" required />
+            <input id="photoInput" type="file" accept="image/*" multiple required />
             <span class="upload-icon">+</span>
-            <span id="fileLabel">画像を選択</span>
+            <span id="fileLabel">画像を選択（複数可）</span>
           </label>
 
           <button class="primary-button" type="submit">ランキングに追加</button>
@@ -183,7 +183,12 @@
     <template id="photoCardTemplate">
       <article class="photo-card">
         <div class="rank-badge"></div>
-        <img alt="アップロードされた画像" />
+        <div class="photo-carousel">
+          <img alt="アップロードされた画像" />
+          <button class="carousel-button carousel-prev" type="button" aria-label="前の画像">‹</button>
+          <button class="carousel-button carousel-next" type="button" aria-label="次の画像">›</button>
+          <span class="carousel-count"></span>
+        </div>
         <div class="photo-body">
           <div class="photo-meta">
             <div>

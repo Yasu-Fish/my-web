@@ -149,9 +149,25 @@ document.querySelectorAll(".back-button").forEach((button) => {
 });
 
 photoInput.addEventListener("change", () => {
-  const file = photoInput.files?.[0];
-  fileLabel.textContent = file ? file.name : "画像を選択";
+  const files = getSelectedPhotoFiles();
+  fileLabel.textContent = formatSelectedFileLabel(files);
 });
+
+function getSelectedPhotoFiles() {
+  return Array.from(photoInput.files ?? []);
+}
+
+function formatSelectedFileLabel(files) {
+  if (files.length === 0) {
+    return "画像を選択（複数可）";
+  }
+
+  if (files.length === 1) {
+    return files[0].name;
+  }
+
+  return `${files.length}枚の画像を選択中`;
+}
 
 imageViewer.addEventListener("click", (event) => {
   if (event.target === imageViewer) {
@@ -172,62 +188,79 @@ uploadForm.addEventListener("submit", async (event) => {
     return;
   }
 
-  const file = photoInput.files?.[0];
+  const files = getSelectedPhotoFiles();
   const genreTitle = genreTitleInput.value.trim();
   const photoName = photoNameInput.value.trim();
   const photoSize = parseSize(photoSizeInput.value);
   const catchDate = catchDateInput.value || null;
   const comment = photoCommentInput.value.trim();
 
-  if (!file || !genreTitle || !photoName || !Number.isFinite(photoSize) || photoSize < 0) {
+  if (files.length === 0 || !genreTitle || !photoName || !Number.isFinite(photoSize) || photoSize < 0) {
     alert("ジャンル、名前、サイズ、画像を入力してください。");
     return;
   }
 
-  if (!file.type.startsWith("image/")) {
+  if (files.some((file) => !file.type.startsWith("image/"))) {
     alert("画像ファイルを選択してください。");
     return;
   }
 
   try {
-    const optimizedImageBlob = await optimizeImageFile(file);
-    
     if (!supabaseClient) {
+      const imageDataUrls = [];
+
+      for (const file of files) {
+        const optimizedImageBlob = await optimizeImageFile(file);
+        imageDataUrls.push(await blobToDataUrl(optimizedImageBlob));
+      }
+
       saveLocalPhoto({
         genreTitle,
         photoName,
         photoSize,
         catchDate,
         comment,
-        imageDataUrl: await blobToDataUrl(optimizedImageBlob),
+        imageDataUrls,
       });
 
       uploadForm.reset();
-      fileLabel.textContent = "画像を選択";
+      fileLabel.textContent = "画像を選択（複数可）";
       await refreshState({ keepSelection: normalizeGenreId(genreTitle) });
       showView("ranking");
-      setConnectionNotice("この端末内に一時保存しました。Supabase 設定後は共有保存に切り替わります。", "success");
+      setConnectionNotice(`${files.length}枚の画像をこの端末内に一時保存しました。Supabase 設定後は共有保存に切り替わります。`, "success");
       return;
     }
 
-    setConnectionNotice("画像を Supabase に保存しています。", "info");
-    const uploadPath = buildStoragePath(genreTitle, optimizedImageBlob.type || file.type);
+    setConnectionNotice(`${files.length}枚の画像を Supabase に保存しています。`, "info");
+    const uploadPaths = [];
 
-    await uploadImage(uploadPath, optimizedImageBlob);
-    await insertPhoto({
-      genreTitle,
-      photoName,
-      photoSize,
-      catchDate,
-      comment,
-      imagePath: uploadPath,
-    });
+    try {
+      for (const file of files) {
+        const optimizedImageBlob = await optimizeImageFile(file);
+        const uploadPath = buildStoragePath(genreTitle, optimizedImageBlob.type || file.type);
+
+        await uploadImage(uploadPath, optimizedImageBlob);
+        uploadPaths.push(uploadPath);
+      }
+
+      await insertPhoto({
+        genreTitle,
+        photoName,
+        photoSize,
+        catchDate,
+        comment,
+        imagePaths: uploadPaths,
+      });
+    } catch (error) {
+      await Promise.all(uploadPaths.map((path) => removeImage(path).catch(() => undefined)));
+      throw error;
+    }
 
     uploadForm.reset();
-    fileLabel.textContent = "画像を選択";
+    fileLabel.textContent = "画像を選択（複数可）";
     await refreshState({ keepSelection: normalizeGenreId(genreTitle) });
     showView("ranking");
-    setConnectionNotice("Supabase に保存しました。別の端末でも同じデータを確認できます。", "success");
+    setConnectionNotice(`${files.length}枚の画像を Supabase に保存しました。別の端末でも同じデータを確認できます。`, "success");
   } catch (error) {
     setConnectionNotice("Supabase への保存に失敗しました。設定や権限を確認してください。", "error");
     alert(getMessage(error, "画像を保存できませんでした。Supabase の設定や権限を確認してください。"));
@@ -563,6 +596,10 @@ function updateUiAvailability() {
 function createPhotoCard(photo, rank) {
   const card = photoTemplate.content.firstElementChild.cloneNode(true);
   const image = card.querySelector("img");
+  const carousel = card.querySelector(".photo-carousel");
+  const prevButton = card.querySelector(".carousel-prev");
+  const nextButton = card.querySelector(".carousel-next");
+  const carouselCount = card.querySelector(".carousel-count");
   const rankBadge = card.querySelector(".rank-badge");
   const name = card.querySelector("h4");
   const date = card.querySelector(".photo-date");
@@ -572,8 +609,33 @@ function createPhotoCard(photo, rank) {
   const size = card.querySelector(".photo-size");
   const comment = card.querySelector(".photo-comment");
 
-  image.src = photo.imageUrl;
-  image.alt = photo.name;
+  const imageUrls = getPhotoImageUrls(photo);
+  let currentImageIndex = 0;
+
+  const syncCarousel = () => {
+    image.src = imageUrls[currentImageIndex] ?? "";
+    image.alt = imageUrls.length > 1 ? `${photo.name} ${currentImageIndex + 1}枚目` : photo.name;
+    carouselCount.textContent = `${currentImageIndex + 1} / ${imageUrls.length}`;
+  };
+
+  syncCarousel();
+  carousel.classList.toggle("has-multiple-images", imageUrls.length > 1);
+
+  const showCarouselImage = (nextIndex) => {
+    currentImageIndex = (nextIndex + imageUrls.length) % imageUrls.length;
+    syncCarousel();
+  };
+
+  prevButton.addEventListener("click", () => {
+    showCarouselImage(currentImageIndex - 1);
+  });
+  nextButton.addEventListener("click", () => {
+    showCarouselImage(currentImageIndex + 1);
+  });
+  bindCarouselSwipe(carousel, (direction) => {
+    showCarouselImage(currentImageIndex + direction);
+  });
+
   rankBadge.textContent = `#${rank}`;
   rankBadge.classList.add(getRankBadgeClass(rank));
   name.textContent = photo.name;
@@ -594,6 +656,49 @@ function createPhotoCard(photo, rank) {
   });
 
   return card;
+}
+
+function getPhotoImageUrls(photo) {
+  const urls = Array.isArray(photo.imageUrls) ? photo.imageUrls.filter(Boolean) : [];
+  const fallbackUrls = [photo.imageUrl].filter(Boolean);
+  return urls.length > 0 ? urls : fallbackUrls.length > 0 ? fallbackUrls : [""];
+}
+
+function bindCarouselSwipe(element, onSlide) {
+  let pointerStartX = 0;
+  let pointerStartY = 0;
+  let activePointerId = null;
+
+  element.addEventListener("pointerdown", (event) => {
+    if (activePointerId !== null) {
+      return;
+    }
+
+    activePointerId = event.pointerId;
+    pointerStartX = event.clientX;
+    pointerStartY = event.clientY;
+    element.setPointerCapture?.(event.pointerId);
+  });
+
+  element.addEventListener("pointerup", (event) => {
+    if (event.pointerId !== activePointerId) {
+      return;
+    }
+
+    const deltaX = event.clientX - pointerStartX;
+    const deltaY = event.clientY - pointerStartY;
+    activePointerId = null;
+
+    if (Math.abs(deltaX) < 42 || Math.abs(deltaX) < Math.abs(deltaY)) {
+      return;
+    }
+
+    onSlide(deltaX < 0 ? 1 : -1);
+  });
+
+  element.addEventListener("pointercancel", () => {
+    activePointerId = null;
+  });
 }
 
 function getRankBadgeClass(rank) {
@@ -793,7 +898,7 @@ function openEditView(photoId) {
   editPhotoSizeInput.value = String(record.photo.size);
   editCatchDateInput.value = record.photo.catchDate ?? "";
   editPhotoCommentInput.value = record.photo.comment ?? "";
-  editPreviewImage.src = record.photo.imageUrl;
+  editPreviewImage.src = getPhotoImageUrls(record.photo)[0] ?? "";
   editPreviewImage.alt = record.photo.name;
   editDate.textContent = formatCatchDate(record.photo.catchDate);
   showView("edit");
@@ -829,7 +934,9 @@ function buildState(rows) {
       size: Number(row.size) || 0,
       comment: row.comment ?? "",
       imagePath: row.image_path,
+      imagePaths: normalizeImagePaths(row),
       imageUrl: row.image_url ?? getPublicImageUrl(row.image_path),
+      imageUrls: normalizeImageUrls(row),
       userId: row.user_id ?? null,
       catchDate: row.catch_date ?? null,
       likeCount: Number(row.like_count) || 0,
@@ -845,6 +952,23 @@ function buildState(rows) {
   };
 }
 
+function normalizeImagePaths(row) {
+  const paths = Array.isArray(row.image_paths) ? row.image_paths.filter(Boolean) : [];
+  return paths.length > 0 ? paths : [row.image_path].filter(Boolean);
+}
+
+function normalizeImageUrls(row) {
+  if (Array.isArray(row.image_urls)) {
+    const urls = row.image_urls.filter(Boolean);
+
+    if (urls.length > 0) {
+      return urls;
+    }
+  }
+
+  return normalizeImagePaths(row).map((path) => getPublicImageUrl(path));
+}
+
 function createStateSignature(nextState) {
   return JSON.stringify(
     nextState.genres.map((genre) => ({
@@ -856,7 +980,9 @@ function createStateSignature(nextState) {
         size: photo.size,
         comment: photo.comment,
         imagePath: photo.imagePath,
+        imagePaths: photo.imagePaths,
         imageUrl: photo.imageUrl,
+        imageUrls: photo.imageUrls,
         catchDate: photo.catchDate,
         likeCount: photo.likeCount,
         likedByClient: photo.likedByClient,
@@ -867,10 +993,20 @@ function createStateSignature(nextState) {
 }
 
 async function fetchPhotos() {
-  const { data, error } = await supabaseClient
+  let { data, error } = await supabaseClient
     .from(SUPABASE_TABLE)
-    .select("id, genre_title, name, size, comment, image_path, user_id, catch_date, created_at")
+    .select("id, genre_title, name, size, comment, image_path, image_paths, user_id, catch_date, created_at")
     .order("created_at", { ascending: false });
+
+  if (error && /image_paths/i.test(error.message ?? "")) {
+    const fallbackResult = await supabaseClient
+      .from(SUPABASE_TABLE)
+      .select("id, genre_title, name, size, comment, image_path, user_id, catch_date, created_at")
+      .order("created_at", { ascending: false });
+
+    data = fallbackResult.data;
+    error = fallbackResult.error;
+  }
 
   if (error) {
     throw error;
@@ -910,19 +1046,20 @@ async function fetchPhotos() {
   }));
 }
 
-async function insertPhoto({ genreTitle, photoName, photoSize, catchDate, comment, imagePath }) {
+async function insertPhoto({ genreTitle, photoName, photoSize, catchDate, comment, imagePaths }) {
+  const paths = imagePaths.filter(Boolean);
   const { error } = await supabaseClient.from(SUPABASE_TABLE).insert({
     genre_title: genreTitle,
     name: photoName,
     size: photoSize,
     catch_date: catchDate,
     comment,
-    image_path: imagePath,
+    image_path: paths[0],
+    image_paths: paths,
     user_id: currentUser?.id ?? null,
   });
 
   if (error) {
-    await removeImage(imagePath).catch(() => undefined);
     throw error;
   }
 }
@@ -936,7 +1073,8 @@ async function updatePhoto(photoId, values) {
 }
 
 async function deletePhoto(photo) {
-  await removeImage(photo.imagePath);
+  const imagePaths = Array.isArray(photo.imagePaths) && photo.imagePaths.length > 0 ? photo.imagePaths : [photo.imagePath];
+  await removeImages(imagePaths.filter(Boolean));
 
   const { error } = await supabaseClient.from(SUPABASE_TABLE).delete().eq("id", photo.id);
 
@@ -959,6 +1097,18 @@ async function uploadImage(path, file) {
 
 async function removeImage(path) {
   const { error } = await supabaseClient.storage.from(SUPABASE_BUCKET).remove([path]);
+
+  if (error) {
+    throw error;
+  }
+}
+
+async function removeImages(paths) {
+  if (paths.length === 0) {
+    return;
+  }
+
+  const { error } = await supabaseClient.storage.from(SUPABASE_BUCKET).remove(paths);
 
   if (error) {
     throw error;
@@ -1187,8 +1337,9 @@ function loadLocalState() {
   }
 }
 
-function saveLocalPhoto({ genreTitle, photoName, photoSize, catchDate, comment, imageDataUrl }) {
+function saveLocalPhoto({ genreTitle, photoName, photoSize, catchDate, comment, imageDataUrls }) {
   const items = readLocalItems();
+  const urls = imageDataUrls.filter(Boolean);
 
   items.unshift({
     id: globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`,
@@ -1198,7 +1349,9 @@ function saveLocalPhoto({ genreTitle, photoName, photoSize, catchDate, comment, 
     catch_date: catchDate,
     comment,
     image_path: "",
-    image_url: imageDataUrl,
+    image_paths: [],
+    image_url: urls[0] ?? "",
+    image_urls: urls,
     like_count: 0,
     liked_by_client: false,
     created_at: new Date().toISOString(),
