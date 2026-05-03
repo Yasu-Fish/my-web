@@ -562,50 +562,26 @@ textarea:focus {
   object-fit: contain;
 }
 
-.carousel-button,
 .carousel-count {
   position: absolute;
   opacity: 0;
   pointer-events: none;
 }
 
-.photo-carousel.has-multiple-images .carousel-button,
 .photo-carousel.has-multiple-images .carousel-count {
   opacity: 1;
   pointer-events: auto;
 }
 
-.carousel-button {
-  top: 50%;
-  z-index: 2;
-  display: grid;
-  width: 42px;
-  height: 42px;
-  place-items: center;
-  border-radius: 999px;
-  color: white;
-  background: rgba(23, 32, 26, 0.56);
-  cursor: pointer;
-  font-size: 2rem;
-  line-height: 1;
-  transform: translateY(-50%);
-}
-
-.carousel-prev {
-  left: 12px;
-}
-
-.carousel-next {
-  right: 12px;
-}
-
 .carousel-count {
   right: 12px;
   bottom: 12px;
+  border: 0;
   border-radius: 999px;
   padding: 4px 10px;
   color: white;
   background: rgba(23, 32, 26, 0.62);
+  cursor: pointer;
   font-size: 0.78rem;
   font-weight: 700;
 }

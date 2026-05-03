@@ -597,8 +597,6 @@ function createPhotoCard(photo, rank) {
   const card = photoTemplate.content.firstElementChild.cloneNode(true);
   const image = card.querySelector("img");
   const carousel = card.querySelector(".photo-carousel");
-  const prevButton = card.querySelector(".carousel-prev");
-  const nextButton = card.querySelector(".carousel-next");
   const carouselCount = card.querySelector(".carousel-count");
   const rankBadge = card.querySelector(".rank-badge");
   const name = card.querySelector("h4");
@@ -626,10 +624,7 @@ function createPhotoCard(photo, rank) {
     syncCarousel();
   };
 
-  prevButton.addEventListener("click", () => {
-    showCarouselImage(currentImageIndex - 1);
-  });
-  nextButton.addEventListener("click", () => {
+  carouselCount.addEventListener("click", () => {
     showCarouselImage(currentImageIndex + 1);
   });
   bindCarouselSwipe(carousel, (direction) => {
@@ -670,7 +665,7 @@ function bindCarouselSwipe(element, onSlide) {
   let activePointerId = null;
 
   element.addEventListener("pointerdown", (event) => {
-    if (event.target.closest(".carousel-button")) {
+    if (event.target.closest(".carousel-count")) {
       return;
     }
 
