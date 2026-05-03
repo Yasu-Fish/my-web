@@ -641,6 +641,48 @@ textarea:focus {
   box-shadow: 0 12px 28px rgba(43, 55, 45, 0.12);
 }
 
+.edit-images {
+  display: grid;
+  gap: 12px;
+}
+
+.edit-image-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 10px;
+}
+
+.edit-image-item {
+  position: relative;
+  overflow: hidden;
+  border-radius: 16px;
+  background: #e7ddcb;
+}
+
+.edit-image-item img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  object-fit: contain;
+}
+
+.edit-image-remove {
+  position: absolute;
+  right: 8px;
+  bottom: 8px;
+  border-radius: 999px;
+  padding: 5px 10px;
+  color: white;
+  background: rgba(140, 42, 30, 0.86);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.edit-image-add {
+  min-height: 108px;
+  border-radius: 18px;
+}
+
 .danger-button {
   min-height: 50px;
   border-radius: 18px;

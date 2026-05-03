@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>PhotoShare Ranking</title>
-    <link rel="stylesheet" href="styles.css?v=20260503-2" />
+    <link rel="stylesheet" href="styles.css?v=20260503-3" />
   </head>
   <body>
     <main class="app-shell">
@@ -125,6 +125,15 @@
             <textarea id="editPhotoComment" rows="3" placeholder="この画像へのコメント"></textarea>
           </label>
 
+          <div class="edit-images">
+            <div id="editImageList" class="edit-image-list"></div>
+            <label class="upload-drop edit-image-add">
+              <input id="editPhotoInput" type="file" accept="image/*" multiple />
+              <span class="upload-icon">+</span>
+              <span>画像を追加</span>
+            </label>
+          </div>
+
           <button class="primary-button" type="submit">更新する</button>
           <button id="editDeleteButton" class="danger-button" type="button">このデータを削除</button>
         </form>
@@ -220,6 +229,6 @@
 
     <script src="supabase-config.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="app.js?v=20260503-2"></script>
+    <script src="app.js?v=20260503-3"></script>
   </body>
 </html>

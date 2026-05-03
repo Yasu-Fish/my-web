@@ -51,6 +51,8 @@ const editPhotoSizeInput = document.querySelector("#editPhotoSize");
 const editCatchDateInput = document.querySelector("#editCatchDate");
 const editPhotoCommentInput = document.querySelector("#editPhotoComment");
 const editPreviewImage = document.querySelector("#editPreviewImage");
+const editImageList = document.querySelector("#editImageList");
+const editPhotoInput = document.querySelector("#editPhotoInput");
 const editDate = document.querySelector("#editDate");
 const editDeleteButton = document.querySelector("#editDeleteButton");
 const connectionNotice = document.querySelector("#connectionNotice");
@@ -67,6 +69,7 @@ let stateSignature = "";
 let selectedGenreId = null;
 let currentView = "home";
 let editingPhotoId = null;
+let editImageItems = [];
 let isRefreshing = false;
 let viewerTransform = {
   scale: 1,
@@ -181,6 +184,28 @@ imageViewer.addEventListener("touchmove", handleViewerTouchMove, { passive: fals
 imageViewer.addEventListener("touchend", handleViewerTouchEnd);
 imageViewer.addEventListener("touchcancel", handleViewerTouchEnd);
 
+editPhotoInput.addEventListener("change", () => {
+  const files = Array.from(editPhotoInput.files ?? []);
+
+  if (files.some((file) => !file.type.startsWith("image/"))) {
+    alert("画像ファイルを選択してください。");
+    editPhotoInput.value = "";
+    return;
+  }
+
+  files.forEach((file) => {
+    editImageItems.push({
+      file,
+      path: null,
+      url: URL.createObjectURL(file),
+      isNew: true,
+    });
+  });
+
+  editPhotoInput.value = "";
+  renderEditImages();
+});
+
 uploadForm.addEventListener("submit", async (event) => {
   event.preventDefault();
 
@@ -293,14 +318,31 @@ editForm.addEventListener("submit", async (event) => {
     return;
   }
 
+  if (editImageItems.length === 0) {
+    alert("画像は1枚以上必要です。");
+    return;
+  }
+
   try {
     if (!supabaseClient) {
+      const imageDataUrls = [];
+
+      for (const item of editImageItems) {
+        if (item.file) {
+          const optimizedImageBlob = await optimizeImageFile(item.file);
+          imageDataUrls.push(await blobToDataUrl(optimizedImageBlob));
+        } else {
+          imageDataUrls.push(item.url);
+        }
+      }
+
       updateLocalPhoto(record.photo.id, {
         genreTitle: nextGenreTitle,
         name: nextPhotoName,
         size: nextPhotoSize,
         catchDate: nextCatchDate,
         comment: nextComment,
+        imageUrls: imageDataUrls,
       });
 
       await refreshState({ keepSelection: normalizeGenreId(nextGenreTitle) });
@@ -309,13 +351,41 @@ editForm.addEventListener("submit", async (event) => {
       return;
     }
 
-    await updatePhoto(record.photo.id, {
-      genre_title: nextGenreTitle,
-      name: nextPhotoName,
-      size: nextPhotoSize,
-      catch_date: nextCatchDate,
-      comment: nextComment,
-    });
+    const originalPaths = Array.isArray(record.photo.imagePaths) ? record.photo.imagePaths.filter(Boolean) : [];
+    const keptPaths = editImageItems.map((item) => item.path).filter(Boolean);
+    const uploadedPaths = [];
+
+    try {
+      for (const item of editImageItems) {
+        if (!item.file) {
+          continue;
+        }
+
+        const optimizedImageBlob = await optimizeImageFile(item.file);
+        const uploadPath = buildStoragePath(nextGenreTitle, optimizedImageBlob.type || item.file.type);
+
+        await uploadImage(uploadPath, optimizedImageBlob);
+        uploadedPaths.push(uploadPath);
+      }
+
+      const nextImagePaths = [...keptPaths, ...uploadedPaths];
+
+      await updatePhoto(record.photo.id, {
+        genre_title: nextGenreTitle,
+        name: nextPhotoName,
+        size: nextPhotoSize,
+        catch_date: nextCatchDate,
+        comment: nextComment,
+        image_path: nextImagePaths[0],
+        image_paths: nextImagePaths,
+      });
+
+      const removedPaths = originalPaths.filter((path) => !nextImagePaths.includes(path));
+      await removeImages(removedPaths).catch(() => undefined);
+    } catch (error) {
+      await removeImages(uploadedPaths).catch(() => undefined);
+      throw error;
+    }
 
     await refreshState({ keepSelection: normalizeGenreId(nextGenreTitle) });
     showView("ranking");
@@ -897,10 +967,67 @@ function openEditView(photoId) {
   editPhotoSizeInput.value = String(record.photo.size);
   editCatchDateInput.value = record.photo.catchDate ?? "";
   editPhotoCommentInput.value = record.photo.comment ?? "";
-  editPreviewImage.src = getPhotoImageUrls(record.photo)[0] ?? "";
+  setEditImageItems(record.photo);
+  editPreviewImage.src = editImageItems[0]?.url ?? "";
   editPreviewImage.alt = record.photo.name;
   editDate.textContent = formatCatchDate(record.photo.catchDate);
   showView("edit");
+}
+
+function setEditImageItems(photo) {
+  revokeNewEditImageUrls();
+
+  const urls = getPhotoImageUrls(photo);
+  const paths = Array.isArray(photo.imagePaths) ? photo.imagePaths : [];
+  editImageItems = urls.map((url, index) => ({
+    file: null,
+    path: paths[index] ?? null,
+    url,
+    isNew: false,
+  }));
+
+  renderEditImages();
+}
+
+function revokeNewEditImageUrls() {
+  editImageItems.forEach((item) => {
+    if (item.isNew && item.url) {
+      URL.revokeObjectURL(item.url);
+    }
+  });
+}
+
+function renderEditImages() {
+  editImageList.replaceChildren();
+
+  editImageItems.forEach((item, index) => {
+    const wrapper = document.createElement("div");
+    const image = document.createElement("img");
+    const removeButton = document.createElement("button");
+
+    wrapper.className = "edit-image-item";
+    image.src = item.url;
+    image.alt = `編集画像 ${index + 1}枚目`;
+    removeButton.type = "button";
+    removeButton.className = "edit-image-remove";
+    removeButton.textContent = "削除";
+    removeButton.disabled = !(!supabaseClient || Boolean(currentUser));
+    removeButton.addEventListener("click", () => {
+      const [removedItem] = editImageItems.splice(index, 1);
+
+      if (removedItem?.isNew && removedItem.url) {
+        URL.revokeObjectURL(removedItem.url);
+      }
+
+      editPreviewImage.src = editImageItems[0]?.url ?? "";
+      renderEditImages();
+    });
+
+    wrapper.append(image, removeButton);
+    editImageList.append(wrapper);
+  });
+
+  editPreviewImage.src = editImageItems[0]?.url ?? "";
 }
 
 function findPhotoRecord(photoId) {
@@ -1360,6 +1487,7 @@ function saveLocalPhoto({ genreTitle, photoName, photoSize, catchDate, comment, 
 }
 
 function updateLocalPhoto(photoId, values) {
+  const imageUrls = Array.isArray(values.imageUrls) ? values.imageUrls.filter(Boolean) : null;
   const items = readLocalItems().map((item) =>
     item.id === photoId
       ? {
@@ -1369,6 +1497,14 @@ function updateLocalPhoto(photoId, values) {
           size: values.size,
           catch_date: values.catchDate,
           comment: values.comment,
+          ...(imageUrls
+            ? {
+                image_path: "",
+                image_paths: [],
+                image_url: imageUrls[0] ?? "",
+                image_urls: imageUrls,
+              }
+            : {}),
         }
       : item,
   );
