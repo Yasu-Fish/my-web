@@ -670,6 +670,10 @@ function bindCarouselSwipe(element, onSlide) {
   let activePointerId = null;
 
   element.addEventListener("pointerdown", (event) => {
+    if (event.target.closest(".carousel-button")) {
+      return;
+    }
+
     if (activePointerId !== null) {
       return;
     }

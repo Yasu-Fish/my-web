@@ -558,7 +558,7 @@ textarea:focus {
 .photo-carousel img {
   display: block;
   width: 100%;
-  height: min(360px, 72vw);
+  height: auto;
   object-fit: contain;
 }
 
@@ -577,6 +577,7 @@ textarea:focus {
 
 .carousel-button {
   top: 50%;
+  z-index: 2;
   display: grid;
   width: 42px;
   height: 42px;
@@ -584,6 +585,7 @@ textarea:focus {
   border-radius: 999px;
   color: white;
   background: rgba(23, 32, 26, 0.56);
+  cursor: pointer;
   font-size: 2rem;
   line-height: 1;
   transform: translateY(-50%);
