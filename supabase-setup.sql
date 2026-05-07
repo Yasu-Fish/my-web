@@ -9,6 +9,7 @@ create table if not exists public.photos (
   catch_date date,
   comment text not null default '',
   image_path text not null unique,
+  image_paths text[] not null default '{}',
   created_at timestamptz not null default now()
 );
 
@@ -17,6 +18,13 @@ add column if not exists user_id uuid references auth.users(id) on delete set nu
 
 alter table public.photos
 add column if not exists catch_date date;
+
+alter table public.photos
+add column if not exists image_paths text[] not null default '{}';
+
+update public.photos
+set image_paths = array[image_path]
+where coalesce(array_length(image_paths, 1), 0) = 0;
 
 alter table public.photos enable row level security;
 
