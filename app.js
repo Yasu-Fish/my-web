@@ -352,8 +352,8 @@ editForm.addEventListener("submit", async (event) => {
     }
 
     const originalPaths = Array.isArray(record.photo.imagePaths) ? record.photo.imagePaths.filter(Boolean) : [];
-    const keptPaths = editImageItems.map((item) => item.path).filter(Boolean);
     const uploadedPaths = [];
+    const uploadedPathByItem = new Map();
 
     try {
       for (const item of editImageItems) {
@@ -366,9 +366,12 @@ editForm.addEventListener("submit", async (event) => {
 
         await uploadImage(uploadPath, optimizedImageBlob);
         uploadedPaths.push(uploadPath);
+        uploadedPathByItem.set(item, uploadPath);
       }
 
-      const nextImagePaths = [...keptPaths, ...uploadedPaths];
+      const nextImagePaths = editImageItems
+        .map((item) => item.path || uploadedPathByItem.get(item))
+        .filter(Boolean);
 
       await updatePhoto(record.photo.id, {
         genre_title: nextGenreTitle,
@@ -1003,15 +1006,44 @@ function renderEditImages() {
   editImageItems.forEach((item, index) => {
     const wrapper = document.createElement("div");
     const image = document.createElement("img");
+    const orderLabel = document.createElement("span");
+    const moveControls = document.createElement("div");
+    const movePrevButton = document.createElement("button");
+    const moveNextButton = document.createElement("button");
     const removeButton = document.createElement("button");
+    const canEditImages = !supabaseClient || Boolean(currentUser);
 
     wrapper.className = "edit-image-item";
     image.src = item.url;
     image.alt = `編集画像 ${index + 1}枚目`;
+    orderLabel.className = "edit-image-order";
+    orderLabel.textContent = String(index + 1);
+
+    moveControls.className = "edit-image-move";
+    movePrevButton.type = "button";
+    movePrevButton.className = "edit-image-move-button";
+    movePrevButton.textContent = "↑";
+    movePrevButton.setAttribute("aria-label", `${index + 1}枚目の画像を前へ移動`);
+    movePrevButton.disabled = !canEditImages || index === 0;
+    movePrevButton.addEventListener("click", () => {
+      moveEditImageItem(index, -1);
+    });
+
+    moveNextButton.type = "button";
+    moveNextButton.className = "edit-image-move-button";
+    moveNextButton.textContent = "↓";
+    moveNextButton.setAttribute("aria-label", `${index + 1}枚目の画像を後ろへ移動`);
+    moveNextButton.disabled = !canEditImages || index === editImageItems.length - 1;
+    moveNextButton.addEventListener("click", () => {
+      moveEditImageItem(index, 1);
+    });
+
+    moveControls.append(movePrevButton, moveNextButton);
+
     removeButton.type = "button";
     removeButton.className = "edit-image-remove";
     removeButton.textContent = "削除";
-    removeButton.disabled = !(!supabaseClient || Boolean(currentUser));
+    removeButton.disabled = !canEditImages;
     removeButton.addEventListener("click", () => {
       const [removedItem] = editImageItems.splice(index, 1);
 
@@ -1023,11 +1055,23 @@ function renderEditImages() {
       renderEditImages();
     });
 
-    wrapper.append(image, removeButton);
+    wrapper.append(image, orderLabel, moveControls, removeButton);
     editImageList.append(wrapper);
   });
 
   editPreviewImage.src = editImageItems[0]?.url ?? "";
+}
+
+function moveEditImageItem(index, direction) {
+  const nextIndex = index + direction;
+
+  if (nextIndex < 0 || nextIndex >= editImageItems.length) {
+    return;
+  }
+
+  const [item] = editImageItems.splice(index, 1);
+  editImageItems.splice(nextIndex, 0, item);
+  renderEditImages();
 }
 
 function findPhotoRecord(photoId) {

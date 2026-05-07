@@ -666,6 +666,44 @@ textarea:focus {
   object-fit: contain;
 }
 
+.edit-image-order {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  display: grid;
+  place-items: center;
+  min-width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  padding: 0 8px;
+  color: white;
+  background: rgba(23, 32, 26, 0.72);
+  font-size: 0.78rem;
+  font-weight: 900;
+}
+
+.edit-image-move {
+  position: absolute;
+  right: 8px;
+  top: 8px;
+  display: flex;
+  gap: 6px;
+}
+
+.edit-image-move-button {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 999px;
+  color: var(--ink);
+  background: rgba(255, 250, 240, 0.92);
+  box-shadow: 0 6px 16px rgba(43, 55, 45, 0.14);
+  font-size: 1rem;
+  font-weight: 900;
+  line-height: 1;
+}
+
 .edit-image-remove {
   position: absolute;
   right: 8px;
